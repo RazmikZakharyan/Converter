@@ -1,4 +1,6 @@
 from typing import Union
+import json
+import os
 
 
 class Node:
@@ -37,6 +39,15 @@ class Tree:
         self.__data_xml = ''
         self.__index = None
         self.__depth = 4
+
+    def write(self, path, data_format):
+        if data_format not in Tree.tree_types:
+            raise ValueError(f"data has {Tree.tree_types} formats, no {data_format}")
+        with open(os.path.normpath(path), 'a') as file:
+            if data_format == 'json':
+                json.dump(self.get_json_format(), file)
+            else:
+                file.write(self.get_xml_format())
 
     def get_json_format(self) -> dict:  # xml_to_json
         if self.__data_json:
@@ -217,5 +228,6 @@ if __name__ == '__main__':
          }
     T = Tree.build_tree(d, data_format='json')
     # print(T._Tree__root.children[1].children[0].children[0].metadata)
+    T.write('file.xml', 'xml')
     print(T.get_xml_format())
     print(T.get_json_format())
