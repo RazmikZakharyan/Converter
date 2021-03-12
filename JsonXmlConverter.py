@@ -1,6 +1,6 @@
 from typing import Union
-import json
 import os
+import json
 
 
 class Node:
@@ -141,77 +141,67 @@ class Tree:
                 #     raise Exception(e)
                 data = eval(data)
                 root = Node('data')
-                Tree.create_node(data, root)
+                Tree.json_to_node(data, root)
                 return Tree(root)
             else:
-                list_data = list(map(lambda x: x.strip(), filter(lambda x: True if x else False, data.split('\n'))))[
-                            1:-1]
-                data = Tree.xml_to_dict(list_data)
-                root = Node('data')
-                Tree.create_node(data, root)
-                return Tree(root)
+                list_data = list(map(lambda x: x.strip(), filter(lambda x: True if x else False, data.split('\n'))))
+                return Tree(Tree.xml_to_node(list_data))
         except Exception:
             raise ValueError('Check values')
 
     @staticmethod
-    def xml_to_dict(list_data, data=None, key_path=None):
-        if key_path is None:
-            key_path = []
-        if data is None:
-            data = {}
-        data1 = data2 = data
+    def xml_to_node(list_data: list, root=None):
         for i, item in enumerate(list_data):
-            ind2 = item.find('>')
-            if key_path and i == 0:
-                for key in key_path:
-                    data2 = data1
-                    data1 = data1[key]
-                key_path = []
+            ind = item.find('<') + 1
+            ind_ = item.find(' id=')
+            ind__ = item.find('>')
+            ind___ = item.find('</')
+            name = item[ind:ind_ if ind_ != -1 else ind__]
             if '</' in item:
-                ind1 = item[1:].find('<')
-                if 'id' not in item:
-                    data1.update({item[1:ind2]: item[ind2 + 1:ind1 + 1]})
-                else:
-                    if isinstance(data2[key], dict):
-                        data2[key] = []
-                    data2[key].append(item[ind2 + 1:ind1 + 1])
+                node = Node(name, parent=root,
+                            metadata={'id': int(item[ind_ + 4])} if ind_ != -1 else {}, value=item[ind__ + 1:ind___])
             else:
-                key = item[1:ind2]
-                data1.update({key: {}})
-                j = list_data.index(f"</{item[1:]}")
-                key_path.append(key)
-                data = Tree.xml_to_dict(list_data[i + 1:j], data1, key_path)
-                del list_data[i:j]
-                key_path = []
-        return data
+                node = Node(name, parent=root,
+                            metadata={'id': int(item[ind_ + 4])} if ind_ != -1 else {})
+                end = list_data.index(f"</{name}>", i)
+                Tree.xml_to_node(list_data[i + 1:end], node)
+                del list_data[i:end]
+            root_ = node
+        return root_
 
     @staticmethod
-    def create_node(data: dict, root):
-        info = '_sub'
+    def json_to_node(data: dict, root):
         if isinstance(data, dict):
             data = data.items()
-            if not root.name.endswith('_sub'):
-                info = ''
+            flag = False
         else:
             data = enumerate(data)
+            flag = True
+        if not root.name.endswith('_sub') and root.name.endswith(r'_id_\d'):
+            info = '{}'
+        else:
+            if root.metadata and flag:
+                info = f'{root.name}_id_{root.metadata["id"]}'
+            else:
+                info = 'sub_{}'
         for key, value in data:
             metadata = {}
             if isinstance(data, enumerate):
                 metadata = {'id': key + 1}
             if isinstance(value, dict):
-                root_ = Node(f'{key}{info}', parent=root, metadata=metadata)
-                Tree.create_node(value, root_)
+                root_ = Node(info.format(key), parent=root, metadata=metadata)
+                Tree.json_to_node(value, root_)
                 continue
             if isinstance(value, list):
-                root_ = Node(f'{key}{info}', parent=root)
+                root_ = Node(info.format(key), parent=root)
                 for i, item in enumerate(value):
                     if isinstance(item, (dict, list)):
-                        node = Node(f'{key}_sub_{i}', parent=root_, metadata={'id': i + 1})
-                        Tree.create_node(item, node)
+                        node = Node(f'{info.format(key)}_sub', parent=root_, metadata={'id': i + 1})
+                        Tree.json_to_node(item, node)
                         continue
-                    Node(f'{key}_sub', parent=root_, metadata={'id': i + 1}, value=item)
+                    Node(f'{info.format(key)}_sub', parent=root_, metadata={'id': i + 1}, value=item)
                 continue
-            Node(f'{key}{info}', parent=root, value=value, metadata=metadata)
+            Node(info.format(key), parent=root, value=value, metadata=metadata)
 
 
 if __name__ == '__main__':
@@ -226,8 +216,8 @@ if __name__ == '__main__':
          'data_3': {'sub_d_1': 3,
                     'sub_d_2': 5}
          }
-    T = Tree.build_tree(d, data_format='json')
+    T = Tree.build_tree(string, data_format='xml')
     # print(T._Tree__root.children[1].children[0].children[0].metadata)
-    T.write('file.xml', 'xml')
+
     print(T.get_xml_format())
     print(T.get_json_format())
