@@ -4,7 +4,7 @@ import os
 
 
 class Node:
-    def __init__(self, name, value=None, parent=None, children: list = None, metadata: dict = None, ):
+    def __init__(self, name, value=None, parent=None, children: list = None, metadata: dict = None):
         if parent:
             if not isinstance(parent, Node):
                 raise TypeError("parent type must be <class Node>")
